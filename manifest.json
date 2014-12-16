@@ -1,0 +1,26 @@
+{
+    "manifest_version": 2,
+
+    "name": "Text Analyzer",
+    "version": "1.0",
+    "description": "Get text analysis of the content of a webpage. This plugin has been created by Asus Inc. ",
+
+    "browser_action": {
+        "default_icon": "icons/asus.png"
+    },
+    "options_page": "options.html",
+
+    "content_scripts": [{
+
+        "matches": ["http://*/*"],
+        "css": ["css/lib/tooltipster.css","css/lib/tooltipster-shadow.css"],
+        "js": ["scripts/lib/jquery-1.11.1.min.js", "scripts/lib/mustache.min.js", "scripts/event.js", "scripts/inject.js","scripts/lib/jquery.tooltipster.min.js"]
+    }],
+
+    "background": {
+        "scripts": ["scripts/lib/jquery-1.11.1.min.js", "scripts/lib/mustache.min.js","scripts/event.js", "scripts/inject.js","scripts/lib/jquery.tooltipster.min.js"],
+        "persistent": false
+    },
+
+    "permissions": ["<all_urls>"]
+}
