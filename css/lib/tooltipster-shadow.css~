@@ -9,5 +9,4 @@
 	font-size: 12px;
 	line-height: 14px;
 	padding: 10px 10px 10px 10px;
-	text-align: left;
 }

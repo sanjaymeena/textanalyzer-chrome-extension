@@ -2,25 +2,29 @@
     "manifest_version": 2,
 
     "name": "Text Analyzer",
-    "version": "1.0",
-    "description": "Get text analysis of the content of a webpage. This plugin has been created by Asus Inc. ",
+    "short_name" : "TA",
+    "version": "1.3.1",
+    "description": "Get Grammar and semantic Information of the selected text on a webpage.",
 
-    "browser_action": {
-        "default_icon": "icons/asus.png"
-    },
-    "options_page": "options.html",
+	"icons": { "16": "icons/icon16.png",
+           "48": "icons/icon48.png",
+          "128": "icons/icon128.png" },
+   
+    
+  "web_accessible_resources": ["images/ajax-loader.gif", "ta.html"] ,
 
     "content_scripts": [{
 
-        "matches": ["http://*/*"],
-        "css": ["css/lib/tooltipster.css","css/lib/tooltipster-shadow.css"],
-        "js": ["scripts/lib/jquery-1.11.1.min.js", "scripts/lib/mustache.min.js", "scripts/event.js", "scripts/inject.js","scripts/lib/jquery.tooltipster.min.js"]
+        "matches": ["<all_urls>"],
+        "css": ["css/lib/tooltipster.css","css/lib/tooltipster-shadow.css","css/textanalyzer.css"],
+        "js": ["scripts/lib/jquery-1.11.1.min.js", "scripts/lib/jquery.tooltipster.min.js","scripts/inject.js"]
     }],
 
     "background": {
-        "scripts": ["scripts/lib/jquery-1.11.1.min.js", "scripts/lib/mustache.min.js","scripts/event.js", "scripts/inject.js","scripts/lib/jquery.tooltipster.min.js"],
+        "scripts": ["scripts/event.js"],
         "persistent": false
     },
+	
 
-    "permissions": ["<all_urls>"]
+    "permissions": ["tabs", "<all_urls>","contextMenus"]
 }

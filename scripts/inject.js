@@ -1,11 +1,11 @@
 /* 
  * This javascript injects the nlp information extracted from Text Analyzer server into the current page
  */
-
 // This helps avoid conflicts in case we inject 
 // this script on the same page multiple times
 // without reloading.
-var injected = injected || (function () {
+var count = 1;
+var injected = injected || (function(information) {
 
     // An object that will contain the "methods"
     // we can use from our event script.
@@ -13,561 +13,309 @@ var injected = injected || (function () {
 
     // This method will eventually return
     // background colors from the current page.
-    methods.textAnalysis = function () {
+    methods.textAnalysis = function(information) {
 
 
 
-
-        sendRequestNLP();
-
-
-
-        return "";
+            //alert(selectedText+"Modified");
+            sendRequestToTextAnalyzerServer(information);
 
 
-    }
+
+            return "";
 
 
-    /**
-     * // POST the data to the NLP server using XMLHttpRequest
-     * @returns {undefined}
-     */
+        }
+        /**
+         * // POST the data to the NLP server using XMLHttpRequest
+         * @returns {undefined}
+         */
 
-    function sendRequestNLP() {
+    function sendRequestToTextAnalyzerServer(information) {
         // The URL to POST our data to
-        var postUrl = 'http://192.168.1.203:8080/TextAnalyzerWebService';
-
-        // Set up an asynchronous AJAX POST request
-        var xhr = new XMLHttpRequest();
-
-
-        var currentPageUrl = "";
-        if (typeof this.href === "undefined") {
-            currentPageUrl = document.location.toString().toLowerCase();
-        } else {
-            currentPageUrl = this.href.toString().toLowerCase();
-        }
-
-        //var string = "Jack is a new boy."
-        var params = 'url=' + currentPageUrl +
-                '&language=en'+'&module=CompletePipeLine'  ;
-
-        // Replace any instances of the URLEncoded space char with +
-        params = params.replace(/%20/g, '+');
+          var postUrl = 'http://atcub2.asus.com/TextAnalyzerWebService';
+        //var postUrl = 'https://192.168.1.203:9443/TextAnalyzerWebService';
+        //var postUrl = 'http://192.168.1.203/TextAnalyzerWebService';
+        // var postUrl = 'http://192.168.1.107:9000/TextAnalyzerWebService';
 
 
-        postUrl = postUrl + "?" + params;
 
-        //open the connection 
-        xhr.open('GET', postUrl, true);
-        // Set correct header for form data 
-        xhr.setRequestHeader('Content-type', 'text/plain; charset=UTF-8');
+        var selectedElement = getSelectionBoundaryElement(false);
+        var selectedText = information.selectionText;
+        var language = "en";
+        var module = "SentenceAnalysis";
 
-        // Handle request state change events
-        xhr.onreadystatechange = function () {
-            // If the request completed
-            if (xhr.readyState === 4) {
-                // alert('success');
-                // statusDisplay.innerHTML = '';
-                if (xhr.status === 200) {
-                    var response = xhr.responseText;
-                    processNLPServerResponse(response);
+        var uri = chrome.extension.getURL("images/ajax-loader.gif");
+        //var ajaxLoading="<div id='ajaxloadingTA' style='display:none;'> <img src="+uri+" alt='Ajax Loader' /></div>";
+        //$(selectedElement).append(ajaxLoading);	
 
+        var request = $.ajax({
+            url: postUrl,
+            type: "get", //send it through get method
+            dataType: "json",
+            data: {
+                text: selectedText,
+                language: language,
+                module: module
+            },
+            beforeSend: function() {
+                // show gif here, eg:
 
-                } else {
-
-                    alert('error : ' + xhr.statusText);
-                }
+                $(selectedElement).css('background', 'url(' + uri + ')  no-repeat');
+            },
+            complete: function() {
+                // hide gif here, eg:
+                $(selectedElement).css('background', 'none');
             }
-        };
-
-        // Send the request 
-
-        xhr.send();
-
-    }
-
-
-
-    /**
-     * This function creates the html template and tooltip to show the paragraph information
-     * @param {type} paragraph
-     * @param {type} id1
-     * @param {type} id2
-     * @returns {undefined}
-     */
-    function createTemplateForParagraphInformation(paragraph, id1, id2) {
-
-
-
-        var paragraphNo = paragraph.paragraphNo;
-        var paragraph_content = paragraph.content;
-        var sentenceMap = paragraph.sentenceMap;
-        paragraph_content = $.trim(paragraph_content);
-
-
-        //let try the mustache template
-        //   var paragraph_div="<div class='paragraph' style='display:none;' ";
-        var paragraph_div = "<div class='paragraph'  ";
-        // e.g. id='p1' >		
-        var paragraph_id = "id='p" + paragraphNo + "'>";
-        paragraph_div = paragraph_div + paragraph_id;
-        var template = "<h3>Para : {{paragraphNo}} </h3> Content : {{content}}";
-        var final_temp = paragraph_div + template + "</div>";
-        var html = Mustache.to_html(final_temp, paragraph);
-
-
-
-        //Set the tooltip
-        $(id1).tooltipster({
-            animation: 'fade',
-            delay: 200,
-            theme: 'tooltipster-shadow',
-            touchDevices: false,
-            trigger: 'hover',
-            contentAsHTML: true,
-            content: $(html),
-            maxWidth: 500
 
         });
 
+        request.done(function(response) {
 
-    }
-
-
-
-
-
-
-
-
-    /**
-     * /Function which create the discourse information for the current paragraph using the paragraph discourse map
-     * @param {type} paragraph
-     * @param {type} paragraphDiscourseMap
-     * @param {type} currentWebParagraph
-     * @returns {undefined}
-     */
-    function   createParagraphDiscourseInformation(paragraph, paragraphDiscourseMap, currentWebParagraph) {
-        var discourse_div = "<div class='paradiscourse-tooltip'  ";
-        var discourse_template = "<h4> Paragraph Discourse </h4> <p> Connector : {{connector}} </p> <p>Value : {{value}} </p>";
-        var para_discourse_connector = "<div class='discourseconnector'>  <p> -----> </p></div>";
-        var para_discourse_connector_attached = false;
-        var paragraphNo = paragraph.paragraphNo;
-
-        for (var discourseIndex = 0; discourseIndex < paragraphDiscourseMap.length; discourseIndex++)
-        {
-            var discourseRow = paragraphDiscourseMap[discourseIndex];
-            var id1 = discourseRow.id1;
-            var id2 = discourseRow.value.id2;
-            if (id1 === paragraphNo) {
-
-                var connectorObject = discourseRow.value.connector;
-                var connector = connectorObject.connector;
-                //var value = connectorObject.value;
-
-                //we have consecutive discourse connector;
-                if ((id1 + 1) === id2) {
-
-
-                    //let try the mustache template
-
-
-                    // e.g. id='p1' >	
-
-                    //pdc= paragraph discourse connector	
-                    var discourse_tooltip_id = "id='pdc" + paragraphNo + "'>";
-                    discourse_div = discourse_div + discourse_tooltip_id;
-
-                    var final_temp = discourse_div + discourse_template + "</div>";
-                    var html = Mustache.to_html(final_temp, connectorObject);
-
-
-                    var output = connector.split(/[_]+/).pop();
-                    para_discourse_connector = "<div class='discourseconnector' " + " id='pd" + paragraphNo + "'>" + " <p> <-----connector:" + output + "----> </p></div>";
-
-
-                    para_discourse_connector_attached = true;
-                    $(currentWebParagraph).after(para_discourse_connector);
-                    //Set the tooltip for discourse connector
-
-                    var discourse_div_id = "#pd" + paragraphNo;
-                    $(discourse_div_id).tooltipster({
-                        animation: 'fade',
-                        delay: 200,
-                        theme: 'tooltipster-shadow',
-                        touchDevices: false,
-                        trigger: 'hover',
-                        contentAsHTML: true,
-                        content: $(html),
-                        maxWidth: 500
-
-                    });
-
-
-                    console.log("Discourse connector attached to div id: " + discourse_div_id + " with tooltip id: " + discourse_tooltip_id);
-                }
-
-            }
-
-
-
-
-
-        }
-
-        if (!para_discourse_connector_attached) {
-
-            $(currentWebParagraph).after(para_discourse_connector);
-        }
-
-    }
-    
-    
-    
-    /**
-     * 
-     * Removes all special characters, white spaces from string. This is useful for 
-     * string match as different string segmentation rules can produce slightly
-     * different strings.
-     * 
-     * @param {type} sentence
-     * @returns {unresolved}
-     */
-    function escapeString(sentence){
-      
-        
-         var lower = sentence.toLowerCase();
-    var upper = sentence.toUpperCase();
-
-    var res = "";
-    for(var i=0; i<lower.length; ++i) {
-        if(lower[i] != upper[i] || lower[i].trim() === '')
-            res += sentence[i];
-    }
-        
-        res = res.replace(/\s+/g, '');
-     
-        return res;
-        
-    }
-
-    /**
-     * 
-     * Create Information for sentences in a paragraph
-     * 
-     * @param {type} paragraph
-     * @param {type} currentWebParagraph
-     * @returns {undefined}
-     */
-    function createInformationForParagraphSentences(paragraph, currentWebParagraph) {
-
-        var paragraphNo = paragraph.paragraphNo;
-       
-        var sentenceMap = paragraph.sentenceMap;
-
-        var cptext = $(currentWebParagraph).text();
-        var sentence_prepend="";
-        var sentence_append = "";
-
-        var currentSentenceIndex = 0;
-
-        var web_para_sentences = cptext.match(/[^\.!\?]+[\.!\?]+/g);
-
-         var content = "";
-
-
-        for (var sentenceIndex = 0; sentenceIndex < sentenceMap.length; sentenceIndex++)
-        {
-             var sentenceFound=false;
-            var sentenceObject = sentenceMap[sentenceIndex].value;
-            var sentence = sentenceObject.content;
-            var sentenceNumber=sentenceObject.sentenceNumber;
-            sentence=escapeString(sentence);
-
-            if (web_para_sentences === null) {
-                  console.log("Extracted sentence: " + sentence);
-                  console.log("web para sentence: " + cptext);
-                if (sentence === cptext) {
-                   
-                 sentence_prepend = "<span class='sentencespan'" + "id= 'ssb" + sentenceNumber + "'> <b>&lt;sentence&gt; </b> </span> ";
-                 sentence_append = "<span class='sentencespan'" + "id= 'spe" + sentenceNumber + "'>  <b>&lt;/sentence&gt; </b></span>";     
-                    
-                 content=content+sentence_prepend +cptext + sentence_append;
-               
-                }
-                
-                else{
-                    
-                     content=content+cptext ;
-                }
-            }
-
-            else {
-                
-                for (var websentenceIndex = currentSentenceIndex; websentenceIndex < web_para_sentences.length; websentenceIndex++)
-                {
-                    
-                    var webSentence = web_para_sentences[websentenceIndex];
-                    //var cptext = $.trim($(cp).text())
-                     webSentence=escapeString(sentence);
-                    
-                    
-                     if (sentence === webSentence) {
-                    
-                      sentence_prepend = "<span class='sentence'" + "id= 'ssb" + sentenceNumber + "'> <b>&lt;sentence&gt; </b> </span> ";
-                      sentence_append = "<span class='sentence'" + "id= 'spe" + sentenceNumber + "'>  <b>&lt;/sentence&gt; </b></span>";     
-                
-                    content=content+sentence_prepend +webSentence + sentence_append;
-                    currentSentenceIndex=websentenceIndex;
-                    sentenceFound=true;
-
-                }
-                
-                
-                else{
-                     content=content+webSentence ;
-                    
-                    }
-
-                 if(sentenceFound)break;
-                }
-            }
-            
-        }
-       $(currentWebParagraph).html(content); 
-        
-        createTemplateForParagraphSentences(paragraph);
-        // console.log("Current Sentence html: " + $(currentWebParagraph).html());
-
-    }
-    
-    /**
-     * 
-     * @param {type} paragraph
-     * @returns {undefined}
-     */
-     function createTemplateForParagraphSentences(paragraph){
-        var template = "<h3>Sentence : {{sentenceNumber}} </h3> <h4> Type: {{type}} </h4> <p>Content : {{content}} </p> ";
-
-         
-         var sentenceMap = paragraph.sentenceMap;
-          
-          for (var sentenceIndex = 0; sentenceIndex < sentenceMap.length; sentenceIndex++)
-        {
-             var sentenceObject = sentenceMap[sentenceIndex].value;
-    
-            var sentenceNumber=sentenceObject.sentenceNumber;
-             
-
-            var id1 = "#ssb" + sentenceNumber;
-            var id2 = "#sse" + sentenceNumber;
-            
-             //let try the mustache template
-        //   var paragraph_div="<div class='paragraph' style='display:none;' ";
-        var sentence_div = "<div class='sentence'  ";
-        // e.g. id='p1' >		
-        var sentence_id = "id='s" + sentenceNumber + "'>";
-        sentence_div = sentence_div + sentence_id;
-       
-        var final_temp = sentence_div + template + "</div>";
-        var html = Mustache.to_html(final_temp, sentenceObject);
-
-
-
-        //Set the tooltip
-        $(id1).tooltipster({
-            animation: 'fade',
-            delay: 200,
-            theme: 'tooltipster-shadow',
-            touchDevices: false,
-            trigger: 'hover',
-            contentAsHTML: true,
-            content: $(html),
-            maxWidth: 500
+            processTextAnalyzerResponse(response, selectedElement);
 
         });
-            
-            
-        }
-          
-          
-     }
-    
-    
-    
-    
+
+        request.fail(function(jqXHR, textStatus) {
+            alert("Request failed: " + textStatus);
+        });
+
+
+
+    }
+
+
     /**
-     * Main function which which processes the NLP Information received from the server. 
-     * 
+     * This function will process the text analysis server response and render sentence information
      * @param {type} response
+     * @param {type} selectedElement
      * @returns {undefined}
      */
-    function processNLPServerResponse(response) {
+    function processTextAnalyzerResponse(response, selectedElement) {
 
-        var jsonResponse = JSON.parse(response);
-        var text = jsonResponse.document;
-
-
-        console.log(response);
-	alert(response);
+        var selectedText = $(selectedElement).text();
 
 
+        var sentenceData = "";
+        //var jsonResponse = JSON.parse(response);
+        var html = "<div id='tooltipdiv' class='tooltipdiv'>";
+
+        var wordTemplate = "";
+
+        var paragraphs = response.paragraphs;
 
 
-        var sentence_prepend = "<a href='#' class='sentence'> &lt;sentence&gt; </a> ";
-        var sentence_append = "<a href='#' class='sentence'>  &lt;/sentence&gt; </a>";
-
-
-
-        var sentence_discourse_connector = "<span class='discourseconnector'> ---> </span>";
-
-
-
-
-        var paragraphs = jsonResponse.paragraphs;
-        var paragraphDiscourseMap = jsonResponse.paragraphdiscourseMap;
-        var currentwebParaIndex = 0;
-
-//filter the paragraphs which are too small in text length
-        var webParagraphs = $("p").filter(function () {
-
-            var text =$.trim($(this).text());
-
-            return (text.length > 5);
-        });
-
-
-// Iterate over the extracted paragraphs. Find the right paragraph on the webpage based on string match. 
-        for (var i = 0; i < paragraphs.length; i++)
-        {
+        for (var i = 0; i < paragraphs.length; i++) {
             var paragraph = paragraphs[i].value;
-            var paragraphNo = paragraph.paragraphNo;
-            var paragraph_content = paragraph.content;
-            paragraph_content = escapeString(paragraph_content);
+            var sentenceMap = paragraph.sentenceMap;
+            for (var sentenceIndex = 0; sentenceIndex < sentenceMap.length; sentenceIndex++) {
 
-            //console.log(paragraph_content);
-            //get the filtered list of paragraphs from the webpage
-
-            for (var webparaIndex = currentwebParaIndex; webparaIndex < webParagraphs.length; webparaIndex++)
-            {
-
-                var cp = webParagraphs[webparaIndex];
-                var cptext = escapeString($(cp).text());
-
-                //content is matched to check if we are at the right paragraph. 
-                if (paragraph_content === cptext) {
-                    currentwebParaIndex = webparaIndex;
+                var sentenceObject = sentenceMap[sentenceIndex].value;
+                var sentenceType = sentenceObject.type;
+                var wordInformation = sentenceObject.wordInformation;
+                var string = sentenceObject.sentence;
+                var verbs = wordInformation.verbs;
+                var nouns = wordInformation.nouns;
+                var adverbs = wordInformation.adverbs;
+                var adjectives = wordInformation.adjectives;
 
 
-                    createInformationForParagraphSentences(paragraph, cp);
+                var sentence_template = "<span style='color:green' <font size='6'><b> Sentence</b> :" + string + "</font></span><br> ";
+                sentence_template += "<span style='color:DarkBlue' <font size='5'><b> Type </b>: " + sentenceType + "</font></span><br>";
 
-                    //Sentence Matching 
+                if ((typeof verbs != 'undefined') && verbs.length > 0) {
+                    sentence_template += "<span style='color:Crimson'><b>Verbs:</b> </span><br>";
+                    sentence_template += "<div style='margin-left: 2em;'>";
 
-//                 
-//                  for (var i = 0; i < sentenceMap.length; i++)
-//        {
-//             var sentence = sentenceMap[i].value;
-//        }
-                    //$('body').append(html);
+                    for (var i = 0; i < verbs.length; i++) {
+                        var verb = verbs[i];
 
+                        wordTemplate = createWordTemplate(verb);
 
-                    //spb=span paragraph begin , sbe= span paragraph end
-                    var para_prepend1 = "<span class='paragraphspan'" + "id= 'spb" +paragraphNo + "'> <b>&lt;para&gt; </b> </span> ";
-                    var para_append1 = "<span class='paragraphspan'" + "id= 'spe" + paragraphNo + "'>  <b>&lt;/para&gt; </b></span>";
+                        //var word_html = Mustache.to_html(wordTemplate, verb);
+                        sentence_template += wordTemplate;
+                    }
+                    sentence_template += "</div>";
+                }
 
+                if ((typeof nouns != 'undefined') && nouns.length > 0) {
+                    sentence_template += "<span style='color:Crimson'><b>Nouns:</b> </span><br>";
+                    sentence_template += "<div style='margin-left: 2em;'>";
 
-                    //$(cp).wrap(div_wrapper);
-                    $(cp).prepend(para_prepend1);
-                    $(cp).append(para_append1);
+                    for (var i = 0; i < nouns.length; i++) {
+                        var noun = nouns[i];
+                        wordTemplate = createWordTemplate(noun);
+                        sentence_template += wordTemplate;
+                    }
+                    sentence_template += "</div>";
+                }
 
+                if ((typeof adjectives != 'undefined') && adjectives.length > 0) {
+                    sentence_template += "<span style='color:Crimson'><b>Adjectives:</b> </span><br>";
+                    sentence_template += "<div style='margin-left: 2em;'>";
 
+                    for (var i = 0; i < adjectives.length; i++) {
+                        var adjective = adjectives[i];
+                        wordTemplate = createWordTemplate(adjective);
+                        sentence_template += wordTemplate;
+                    }
+                    sentence_template += "</div>";
+                }
 
-                    //Function which adds the discourse information to the paragraph
-                    createParagraphDiscourseInformation(paragraph, paragraphDiscourseMap, cp);
+                if ((typeof adverbs != 'undefined') && adverbs.length > 0) {
+                    sentence_template += "<span style='color:Crimson'><b>Adverbs:</b> </span><br>";
+                    sentence_template += "<div style='margin-left: 2em;'>";
 
-
-
-
-
-                    var id1 = "#spb" + paragraphNo;
-                    var id2 = "#spe" + paragraphNo;
-
-                    //This function creates the paragraph information template and sets the tooltip for the paragraph
-                    createTemplateForParagraphInformation(paragraph, id1, id2);
-
-
-                    //console.log("HTML of the page: "+ html);
-
-                    console.log("Match found for paragraph : " + paragraphNo + "#Content:" + paragraph_content);
-                    break;
+                    for (var i = 0; i < adverbs.length; i++) {
+                        var adverb = adverbs[i];
+                        wordTemplate = createWordTemplate(adverb);
+                        sentence_template += wordTemplate;
+                    }
+                    sentence_template += "</div>";
                 }
 
 
-                else {
-
-                    //console.log("Match not found for article paragraph: "+ cptext);
-
-                    // console.log("corresponding extracted paragraph: " + paragraph_content );
-
-                }
-
+                sentence_template += "<hr>";
+                sentenceData += sentence_template;
 
 
             }
-
-
         }
 
-        //perform paragraph level manipulation. loop through each paragraph
-        $('p').each(function (i) {
+        var localid = "close" + count;
+	
+	var tooltipId='tooltip'+localid;
+	var tooltipIdCheck='#'+'tooltip'+localid;
+        var moreInfoID = "#" + "moreInformation";
+        var viewJSONID = "#" + "viewJSON";
 
-            var psize = $(this).text().split(' ').length;
-            if (psize > 3)
-            {
-                var paragraphContent = $(this).text();
-                //split the paragraph into sentences
-                var content = "";
+        html += "<p>";
+        html += "<span id='moreInformation' class='moreInformation'>More Information</span>";
+        html += "&nbsp;&nbsp;&nbsp; <span id='viewJSON' class='viewJSON'>View JSON</span>";
+        html += "&nbsp;&nbsp;&nbsp; <span class='closeTooltip' id='" + tooltipId + "'><b> x </b></span>";
+        html += "</p>";
+        html += "<hr  style='color:DarkBlue' >";
+        html += sentenceData + "</div>";
 
-                var sentences = $(this).text().split('.');
-                $.each(sentences, function (index, sentence) {
-                    if (index < sentences.length - 1) {
+        $(selectedElement).attr("id", localid);
+        var id = '#' + localid;
+	
 
-                        var newSentence = sentence_prepend + sentence + sentence_append;
-                        //$(this).append(sentence_prepend);
-                        //$(this).prepend(sentence_append);
-                        content = content + newSentence;
-                        if (index < sentences.length - 2)
-                            content = content + sentence_discourse_connector;
-                    }
-
-                    //$(this).text().replace(sentence,newSentence);
-                    //console.log(newSentence);
-
-                });
-
-                //  $(this).html(content);
-                //  $(this).wrap(div_wrapper);
-                // $(this).prepend(para_prepend_inside);
-                //  $(this).append(para_append);
-                //  $(this).after(para_discourse_connector);
-            }
-
-
+        // console.log(html);
+        //var jQueryObject = $.parseHTML(html);
+        
+        $(id).tooltipster({
+            animation: 'grow',
+            delay: 100,
+            position: 'bottom',
+            interactive: 'true',
+            theme: 'tooltipster-shadow',
+            touchDevices: false,
+            //maxWidth: 900,
+            //multiple:true,
+            restoration: 'none',
+            contentAsHTML: true,
+            content: $(html)
+            
 
         });
 
+
+
+        $(document).bind('click', function(e) {
+            var target = $(e.target);
+
+            if (target.is(tooltipIdCheck)) {
+                e.preventDefault(); // if you want to cancel the event flow
+                $(id).tooltipster().tooltipster('destroy');
+                // do something
+            } else if (target.is(moreInfoID)) {
+                e.preventDefault(); // if you want to cancel the event flow
+
+
+                chrome.extension.sendMessage({
+                    method: "seeMoreInformation",
+                    data: response
+                });
+            } else if (target.is(viewJSONID)) {
+                e.preventDefault(); // if you want to cancel the event flow
+
+
+                chrome.extension.sendMessage({
+                    method: "viewJSONData",
+                    data: response
+                });
+            }
+
+        });
+        count++;
+
     }
+
+
+    /**
+     *
+     * @param {type} word
+     * @returns {String}
+     */
+    function createWordTemplate(word) {
+        var fontsize = "'-1'";
+        var wordTemplate = "<span style='color:DarkRed  ' <font size=" + fontsize + "> Word : </font></span>" + word.word + " &nbsp;&nbsp;";
+        wordTemplate += "<span style='color:DarkBlue  ' <font size=" + fontsize + "> Lemma : </font></span>" + word.lemma + "&nbsp;&nbsp;";
+        wordTemplate += "<span style='color:green  ' <font size=" + fontsize + "> POS : </font></span>" + word.pos + "&nbsp;&nbsp;"
+        wordTemplate += "<span style='color:FireBrick  ' <font size=" + fontsize + "> Definition : </font></span>" + word.definition + " &nbsp;&nbsp;";
+        wordTemplate += "<br>";
+
+        return wordTemplate;
+    }
+
+    /**
+     *This function gets the HTML DOM element of the selected text.
+     */
+    function getSelectionBoundaryElement(isStart) {
+        var range, sel, container;
+        if (document.selection) {
+            range = document.selection.createRange();
+           // range.collapse(isStart);
+            return range.parentElement();
+        } else {
+            sel = window.getSelection();
+            if (sel.getRangeAt) {
+                if (sel.rangeCount > 0) {
+                    range = sel.getRangeAt(0);
+                }
+            } else {
+                // Old WebKit
+                range = document.createRange();
+                range.setStart(sel.anchorNode, sel.anchorOffset);
+                range.setEnd(sel.focusNode, sel.focusOffset);
+
+                // Handle the case when the selection was selected backwards (from the end to the start in the document)
+                if (range.collapsed !== sel.isCollapsed) {
+                    range.setStart(sel.focusNode, sel.focusOffset);
+                    range.setEnd(sel.anchorNode, sel.anchorOffset);
+                }
+            }
+
+            if (range) {
+                container = range[isStart ? "startContainer" : "endContainer"];
+
+                // Check if the container is a text node and return its parent if so
+                return container.nodeType === 3 ? container.parentNode : container;
+            }
+        }
+    }
+
 
     // This tells the script to listen for
     // messages from our extension.
-    chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         var data = {};
         // If the method the extension has requested
         // exists, call it and assign its response
         // to data.
         if (methods.hasOwnProperty(request.method))
-            data = methods[request.method]();
+            data = methods[request.method](request.information);
         // Send the response back to our extension.
         sendResponse({
             data: data
@@ -577,4 +325,3 @@ var injected = injected || (function () {
 
     return true;
 })();
-
