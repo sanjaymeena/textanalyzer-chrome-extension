@@ -33,7 +33,9 @@ var injected = injected || (function(information) {
 
     function sendRequestToTextAnalyzerServer(information) {
         // The URL to POST our data to
-          var postUrl = 'http://atcub2.asus.com/TextAnalyzerWebService';
+
+	var postUrl = 'http://104.131.121.5:9000/TextAnalyzerWebService';
+         // var postUrl = 'http://atcub2.asus.com/TextAnalyzerWebService';
         //var postUrl = 'https://192.168.1.203:9443/TextAnalyzerWebService';
         //var postUrl = 'http://192.168.1.203/TextAnalyzerWebService';
         // var postUrl = 'http://192.168.1.107:9000/TextAnalyzerWebService';
